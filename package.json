@@ -1,0 +1,10 @@
+{
+  "name": "likebot",
+  "dependencies": {
+    "promise": "^8.0.1",
+    "log4js": "^2.2.0",
+    "phantomjs": "^1.9.19",
+    "selenium-webdriver": "^2.48.2",
+    "chromedriver": "^2.30.1"
+  }
+}
