@@ -8,7 +8,7 @@ var webdriver = require('selenium-webdriver'),
 
 var likeBot = {
 
-    init: function(){
+    init: function(tag){
 
 		log4js.configure({
 			appenders: { likebot: { type: 'file', filename: 'likebot.log' } },
@@ -32,29 +32,28 @@ var likeBot = {
 		browser.findElement(by.name('password')).sendKeys(settings.instagram_account_password);
 		browser.findElement(by.xpath('//button')).click();
 		browser.sleep(settings.sleep_delay).then(function() {
-			like_by_nickname(0);
+			like_by_nickname();
 		});
 
-		function like_by_nickname(indexNickname) {
-			if (indexNickname >= settings.instagram_accounts_to_be_liked.length) {
-				logger.info('Everything is done. Finishing...');
-				browser.quit();
-				return;
-			}
-			var promise = new Promise(function (resolve, reject) {
+		function like_by_nickname() {
+			var promise = new Promise(function (resolve) {
 				browser.sleep(settings.sleep_delay);
-				logger.info('Doing likes for: ' + settings.instagram_accounts_to_be_liked[indexNickname]);
-				browser.get('https://instagram.com/' + settings.instagram_accounts_to_be_liked[indexNickname]);
+				logger.info('Doing likes for: ' + tag);
+				browser.get('https://instagram.com/explore/tags/' + tag);
 				browser.sleep(settings.sleep_delay);
-				browser.findElement(by.xpath(xpath_first_photo)).click().then(function () {
-					like(resolve, 0, settings.like_depth_per_user);
+				browser.findElements(by.xpath(xpath_first_photo)).then(function (links) {
+					links[1].click();
+					browser.sleep(settings.sleep_delay).then(function() {
+						like(resolve, 0, settings.like_depth_per_user);
+					});
+
 				});
 			});
 			promise.then(function() {
-				indexNickname++;
-				like_by_nickname(indexNickname);
+				logger.info('Everything is done. Finishing...');
+				browser.quit();
 			});
-		};
+		}
 
 		function like(resolve, index, max_likes) {
 			browser.getCurrentUrl().then(function(url) {
@@ -72,7 +71,7 @@ var likeBot = {
 							browser.sleep(settings.sleep_delay);
 						}
 
-						var nextBtn = index === 0 ? '//div[1]/div[1]/div[1]/a[1]' : '//div[1]/div[1]/div[1]/a[2]';
+						var nextBtn = '//div[1]/div[1]/div[1]/a[2]';
 
 						// Analyzing "Next" button availability
 						browser.findElements(by.xpath(nextBtn)).then(function(buttons) {
@@ -105,4 +104,4 @@ var likeBot = {
 
 };
 
-likeBot.init();
+likeBot.init(process.argv[2]);
