@@ -1,14 +1,20 @@
+'use strict';
+
 require('chromedriver');
 
-var webdriver = require('selenium-webdriver'),
+const webdriver = require('selenium-webdriver'),
     by = webdriver.By,
     Promise = require('promise'),
     settings = require('./settings.json'),
     log4js = require('log4js');
 
-var likeBot = {
+class LikeBot{
 
-    init: function(tag){
+	constructor(name) {
+		this.name = name;
+	}
+
+    init(tag) {
 
 		log4js.configure({
 			appenders: { likebot: { type: 'file', filename: 'likebot.log' } },
@@ -31,33 +37,31 @@ var likeBot = {
 		browser.findElement(by.name('username')).sendKeys(settings.instagram_account_username);
 		browser.findElement(by.name('password')).sendKeys(settings.instagram_account_password);
 		browser.findElement(by.xpath('//button')).click();
-		browser.sleep(settings.sleep_delay).then(function() {
-			like_by_nickname();
-		});
+		browser.sleep(settings.sleep_delay).then(like_by_nickname);
 
 		function like_by_nickname() {
-			var promise = new Promise(function (resolve) {
+			var promise = new Promise(resolve => {
 				browser.sleep(settings.sleep_delay);
-				logger.info('Doing likes for: ' + tag);
-				browser.get('https://instagram.com/explore/tags/' + tag);
+				logger.info(`Doing likes for: ${tag}`);
+				browser.get(`https://instagram.com/explore/tags/${tag}`);
 				browser.sleep(settings.sleep_delay);
-				browser.findElements(by.xpath(xpath_first_photo)).then(function (links) {
+				browser.findElements(by.xpath(xpath_first_photo)).then(links => {
 					links[1].click();
-					browser.sleep(settings.sleep_delay).then(function() {
+					browser.sleep(settings.sleep_delay).then(() => {
 						like(resolve, 0, settings.like_depth_per_user);
 					});
 
 				});
 			});
-			promise.then(function() {
+			promise.then(() => {
 				logger.info('Everything is done. Finishing...');
 				browser.quit();
 			});
 		}
 
 		function like(resolve, index, max_likes) {
-			browser.getCurrentUrl().then(function(url) {
-				logger.debug('Current url:   ' + url);
+			browser.getCurrentUrl().then(url => {
+				logger.debug(`Current url: ${url}`);
 				browser.sleep(settings.sleep_delay);
 
 				browser.findElement(by.xpath(xpath_like_class)).getAttribute('class').then(function(classname) {
@@ -76,13 +80,13 @@ var likeBot = {
 						// Analyzing "Next" button availability
 						browser.findElements(by.xpath(nextBtn)).then(function(buttons) {
 
-							logger.debug('Buttons: ' + buttons.length + ', Photo Index: ' + index);
+							logger.debug(`Buttons: ${buttons.length}, Photo Index: ${index}`);
 
 							if (buttons.length) {
 								buttons[buttons.length - 1].click().then(function() {
 									// if we exceed maximum likes depth, stop like this current user.
 									index++;
-									if (index == max_likes) {
+									if (index === max_likes) {
 										resolve();
 										return;
 									}
@@ -102,6 +106,8 @@ var likeBot = {
 
     }
 
-};
+}
+
+const likeBot = new LikeBot('animal');
 
 likeBot.init(process.argv[2]);
