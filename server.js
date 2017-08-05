@@ -1,56 +1,32 @@
 'use strict';
 
-require('chromedriver');
+const express = require('express'),
+	bodyParser = require('body-parser'),
+	http = require('http'),
+	app = express(),
+	server = http.createServer(app),
+	webdriver = require('selenium-webdriver'),
+	by = webdriver.By;
 
-const webdriver = require('selenium-webdriver'),
-    by = webdriver.By,
-	prompt = require('prompt');
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static('./public/'));
 
-prompt.start();
+app.post('/', (req, res) => {
 
-prompt.get([
-	{
-		description: 'Instagram tag to like',
-		name: 'tag',
-		required: true
-	},
-	{
-		description: 'How many likes',
-		name: 'likes',
-		required: true,
-		type: 'number'
-	},
-	{
-		description: 'Instagram login',
-		name: 'login',
-		required: true
-	},
-	{
-		description: 'Instagram password',
-		name: 'password',
-		required: true,
-		hidden: true,
-		replace: '*',
-	},
-	{
-		description: 'Run in background? [y/n]',
-		name: 'hiddenBrowser',
-		required: true
-	}
-], (err, result) => {
+	let bot = new Bot(req.body, res);
 
-	if(!err) {
+	bot.init();
 
-		const bot = new Bot(result);
-
-		bot.init();
-
-	}
 });
+
+server.listen(8080);
 
 class Bot{
 
-	constructor(settings) {
+	constructor(settings, response) {
+
+		this.response = response;
 
 		this.settings = settings;
 
@@ -61,7 +37,7 @@ class Bot{
 			nextBtn: '//div[1]/div[1]/div[1]/a[2]'
 		};
 
-		this.browser = new webdriver.Builder().forBrowser(this.settings.hiddenBrowser.toLowerCase() === 'y' ? 'phantomjs' : 'chrome').build();
+		this.browser = new webdriver.Builder().forBrowser('phantomjs').build();
 
 	}
 
@@ -73,15 +49,11 @@ class Bot{
 
 		this.logIn();
 
-		this.openPosts();
-
-		this.processPost(0);
-
 	}
 
 	openBrowser() {
 
-		console.log('*** Open browser ***');
+		this.response.write('<br> *** Open browser ***');
 		this.browser.manage().window().setSize(1024, 768);
 		this.browser.get('https://instagram.com/accounts/login/');
 		this.browser.sleep(Bot.sleepDelay());
@@ -90,11 +62,31 @@ class Bot{
 
 	logIn() {
 
-		console.log('*** Login ***');
+		this.response.write('<br> *** Login ***');
 		this.browser.findElement(by.name('username')).sendKeys(this.settings.login);
 		this.browser.findElement(by.name('password')).sendKeys(this.settings.password);
 		this.browser.findElement(by.xpath('//button')).click();
-		this.browser.sleep(Bot.sleepDelay());
+		this.browser.sleep(Bot.sleepDelay() * 5).then(() => {
+
+			return this.browser.getCurrentUrl();
+
+		}).then((currentUrl) => {
+
+			if(currentUrl.indexOf('login') !== -1){
+
+				this.response.write('<br> *** Cannot login. Check credentials ***');
+
+				this.exit();
+
+			} else {
+
+				this.openPosts();
+
+				this.processPost(0);
+
+			}
+
+		});
 
 	}
 
@@ -108,9 +100,9 @@ class Bot{
 
 			links[1].click();
 
-			this.browser.sleep(Bot.sleepDelay())
+			this.browser.sleep(Bot.sleepDelay());
 
-			console.log(`*** Open posts by tag: ${this.settings.tag} ***`);
+			this.response.write(`<br> *** Open posts by tag: ${this.settings.tag} ***`);
 
 		});
 
@@ -120,14 +112,14 @@ class Bot{
 
 		this.browser.getCurrentUrl().then(url => {
 
-			console.log(`${index + 1}/${this.settings.likes}: Open post: ${url}`);
+			this.response.write(`<br> ${index + 1}/${this.settings.likes}: Open post: ${url}`);
 
 			this.browser.sleep(Bot.sleepDelay());
 
 			this.likePost(index);
 
 			this.goNext(index);
-			
+
 		});
 
 	}
@@ -138,11 +130,11 @@ class Bot{
 
 			if (className.indexOf('coreSpriteHeartFull') > 0) {
 
-				console.log(`${index + 1}/${this.settings.likes}: already liked. Skip it`);
+				this.response.write(`<br> ${index + 1}/${this.settings.likes}: already liked. Skip it`);
 
 			} else if (className.indexOf('coreSpriteHeartOpen') > 0){
 
-				console.log(`${index + 1}/${this.settings.likes}: Like post`);
+				this.response.write(`<br> ${index + 1}/${this.settings.likes}: Like post`);
 
 				this.browser.findElement(by.xpath(this.xpath.likeBtn)).click();
 			}
@@ -159,7 +151,7 @@ class Bot{
 
 			if (!buttons.length) {
 
-				console.log(`${index + 1}/${this.settings.likes}: Next button is absent`);
+				this.response.write(`<br> ${index + 1}/${this.settings.likes}: Next button is absent`);
 
 				this.exit();
 			}
@@ -168,13 +160,13 @@ class Bot{
 
 				index++;
 
-				if (index === this.settings.likes) {
+				if (index === +this.settings.likes) {
 
 					this.exit();
 
 				} else {
 
-					console.log(`${index}/${this.settings.likes}: Go to the next post`);
+					this.response.write(`<br> ${index}/${this.settings.likes}: Go to the next post`);
 
 					this.processPost(index);
 
@@ -188,9 +180,13 @@ class Bot{
 
 	exit() {
 
-		console.log('*** All done. Exit ***');
+		this.browser.manage().deleteAllCookies();
 
 		this.browser.quit();
+
+		this.response.write('<br> *** All done. Exit ***');
+
+		this.response.end();
 
 	}
 }
