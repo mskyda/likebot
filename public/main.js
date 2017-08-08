@@ -8,7 +8,7 @@ jQuery('input[type="submit"]').click((e) => {
 
 		if(!el.value){
 
-			el.style = 'background: red;';
+			el.style = 'border-color: red;';
 
 			data = false;
 
@@ -23,6 +23,8 @@ jQuery('input[type="submit"]').click((e) => {
 	});
 
 	if(!data) { return; }
+
+	jQuery('.form').addClass('loading');
 
 	jQuery('.status').empty();
 
@@ -45,6 +47,7 @@ jQuery('input[type="submit"]').click((e) => {
 			return xhr;
 
 		},
+		complete : () => { jQuery('.form').removeClass('loading'); }
 	})
 
 });

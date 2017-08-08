@@ -20,7 +20,7 @@ app.post('/', (req, res) => {
 
 });
 
-server.listen(8080);
+server.listen(process.env.PORT || 8080);
 
 class Bot{
 
@@ -154,25 +154,28 @@ class Bot{
 				this.response.write(`<br> ${index + 1}/${this.settings.likes}: Next button is absent`);
 
 				this.exit();
+
+			} else {
+
+				buttons[buttons.length - 1].click().then(() => {
+
+					index++;
+
+					if (index === +this.settings.likes) {
+
+						this.exit();
+
+					} else {
+
+						this.response.write(`<br> ${index}/${this.settings.likes}: Go to the next post`);
+
+						this.processPost(index);
+
+					}
+
+				});
+
 			}
-
-			buttons[buttons.length - 1].click().then(() => {
-
-				index++;
-
-				if (index === +this.settings.likes) {
-
-					this.exit();
-
-				} else {
-
-					this.response.write(`<br> ${index}/${this.settings.likes}: Go to the next post`);
-
-					this.processPost(index);
-
-				}
-
-			});
 
 		});
 

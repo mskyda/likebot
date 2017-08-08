@@ -3,26 +3,43 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Likebot</title>
+	<link rel="stylesheet" media="all" type="text/css" href="style.css">
 </head>
 <body>
-	<div class="form">
-		<label>Instagram tag to like:</label><br>
-		<input class="data-field" name="tag" /><br>
-		<label>How many likes:</label><br>
-		<select class="data-field" name="likes" >
-			<option value="5">5</option>
-			<option value="10">10</option>
-			<option value="20">20</option>
-			<option value="50">50</option>
-			<option value="100">100</option>
-		</select><br>
-		<label>Instagram login:</label><br>
-		<input class="data-field" name="login" /><br>
-		<label>Instagram password:</label><br>
-		<input class="data-field" type="password" name="password" /><br><br>
-		<input type="submit" value="OK" />
+	<div class="wrapper">
+		<div class="form">
+			<div class="wrapper">
+				<label>Instagram tag to like:</label>
+				<input class="data-field" name="tag" id="tag" />
+			</div>
+			<div class="wrapper">
+				<label for="likes">How many likes:</label>
+				<select class="data-field" name="likes" id="likes" >
+					<option value="5">5</option>
+					<option value="10">10</option>
+					<option value="20">20</option>
+					<option value="50">50</option>
+					<option value="100">100</option>
+				</select>
+			</div>
+			<div class="wrapper">
+				<label for="login">Instagram login:</label>
+				<input class="data-field" name="login" id="login" />
+			</div>
+			<div class="wrapper">
+				<label for="password">Instagram password:</label>
+				<input class="data-field" type="password" name="password" id="password" />
+			</div>
+			<div class="wrapper">
+				<input type="submit" value="OK" />
+			</div>
+			<div class="spinner">
+				<div class="double-bounce1"></div>
+				<div class="double-bounce2"></div>
+			</div>
+		</div>
+		<div class="status"></div>
 	</div>
-	<div class="status"></div>
 	<script src="http://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
 	<script src="main.js"></script>
 </body>
