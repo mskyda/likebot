@@ -1,5 +1,7 @@
 'use strict';
 
+/*require('chromedriver');*/
+
 const express = require('express'),
 	bodyParser = require('body-parser'),
 	http = require('http'),
@@ -34,10 +36,13 @@ class Bot{
 			firstPic: '//header/../div/div/div[1]/div[1]/a[1]',
 			likeClass: '//div[2]/section/a[1]/span[1]',
 			likeBtn: '//div[2]/section/a[1]',
-			nextBtn: '//div[1]/div[1]/div[1]/a[2]'
+			accLink: '//header/div/div[1]/div[1]/a',
+			nextBtn: '//a[@role="button"][text()="Next"]'
 		};
 
-		this.browser = new webdriver.Builder().forBrowser('phantomjs').build();
+		this.browser = new webdriver.Builder().forBrowser('phantomjs'/*'chrome'*/).build();
+
+		this.usersList = [];
 
 	}
 
@@ -82,7 +87,9 @@ class Bot{
 
 				this.openPosts();
 
-				this.processPost(0);
+				this.response.write(`<br> *** Collect users list ***`);
+
+				this.collectUsers();
 
 			}
 
@@ -90,51 +97,132 @@ class Bot{
 
 	}
 
-	openPosts() {
+	openPosts(url) {
 
-		this.browser.get(`https://instagram.com/explore/tags/${this.settings.tag}`);
+		this.browser.get(url || `https://instagram.com/explore/tags/${this.settings.tag}`);
 
 		this.browser.sleep(Bot.sleepDelay());
 
 		this.browser.findElements(by.xpath(this.xpath.firstPic)).then(links => {
 
-			links[1].click();
+			links[links.length - 1].click();
 
 			this.browser.sleep(Bot.sleepDelay());
 
-			this.response.write(`<br> *** Open posts by tag: ${this.settings.tag} ***`);
+			if(url){
+
+				this.response.write(`<br> *** Open posts of user: ${url} ***`);
+
+			} else {
+
+				this.response.write(`<br> *** Open posts by tag: ${this.settings.tag} ***`);
+
+			}
+
 
 		});
 
 	}
 
-	processPost(index) {
+	collectUsers(index) {
+
+		index = index || 0;
+
+		this.browser.getCurrentUrl().then(() => {
+
+			this.browser.sleep(Bot.sleepDelay());
+
+			this.browser.findElement(by.xpath(this.xpath.accLink)).then(link => {
+
+				link.getAttribute('href').then(href => { this.usersList.push(href); });
+
+			});
+
+			this.goNext(index, () => {
+
+				if(this.usersList.length < +this.settings.users){
+
+					index++;
+
+					this.collectUsers(index);
+
+				} else {
+
+					this.response.write(`<br> *** Users to like: *** <br>${this.usersList.join('<br>')}`);
+
+					this.likeUser();
+
+				}
+
+			});
+
+		});
+
+	}
+
+	likeUser(userUndex) {
+
+		userUndex = userUndex || 0;
+
+		this.openPosts(this.usersList[userUndex]);
+
+		this.processPost(0, userUndex);
+
+	}
+
+	processPost(postIndex, userIndex) {
 
 		this.browser.getCurrentUrl().then(url => {
 
-			this.response.write(`<br> ${index + 1}/${this.settings.likes}: Open post: ${url}`);
+			this.response.write(`<br> User: ${userIndex + 1}/${this.settings.users}, Post: ${postIndex + 1}/${this.settings.likes}: Open post: ${url}`);
 
 			this.browser.sleep(Bot.sleepDelay());
 
-			this.likePost(index);
+			this.likePost(postIndex, userIndex);
 
-			this.goNext(index);
+			this.goNext(postIndex, () => {
+
+				postIndex++;
+
+				if (postIndex === +this.settings.likes) {
+
+					userIndex++;
+
+					if(userIndex === +this.settings.users){
+
+						this.exit();
+
+					} else {
+
+						this.likeUser(userIndex);
+
+					}
+
+				} else {
+
+					this.response.write(`<br> User: ${userIndex + 1}/${this.settings.users}, Post: ${postIndex + 1}/${this.settings.likes}: Go to the next post`);
+
+					this.processPost(postIndex, userIndex);
+
+				}
+
+			});
 
 		});
 
 	}
 
-	likePost(index) {
+	likePost(postIndex, userIndex) {
 
 		this.browser.findElement(by.xpath(this.xpath.likeClass)).getAttribute('class').then((className) => {
 
 			if (className.indexOf('coreSpriteHeartFull') > 0) {
 
-				this.response.write(`<br> ${index + 1}/${this.settings.likes}: already liked. Skip it`);
+				this.response.write(`<br> User: ${userIndex + 1}/${this.settings.users}, Post: ${postIndex + 1}/${this.settings.likes}: already liked. Skip it`);
 
 			} else if (className.indexOf('coreSpriteHeartOpen') > 0){
 
-				this.response.write(`<br> ${index + 1}/${this.settings.likes}: Like post`);
+				this.response.write(`<br> User: ${userIndex + 1}/${this.settings.users}, Post: ${postIndex + 1}/${this.settings.likes}: Like post`);
 
 				this.browser.findElement(by.xpath(this.xpath.likeBtn)).click();
 			}
@@ -145,33 +233,23 @@ class Bot{
 
 	}
 
-	goNext(index) {
+	goNext(index, callback) {
 
-		this.browser.findElements(by.xpath(this.xpath.nextBtn)).then((buttons) => {
+		this.browser.findElement(by.xpath(this.xpath.nextBtn)).then((button) => {
 
-			if (!buttons.length) {
+			if (!button) {
 
 				this.response.write(`<br> ${index + 1}/${this.settings.likes}: Next button is absent`);
 
-				this.exit();
+				callback();
 
 			} else {
 
-				buttons[buttons.length - 1].click().then(() => {
+				this.browser.sleep(Bot.sleepDelay());
 
-					index++;
+				button.click().then(() => {
 
-					if (index === +this.settings.likes) {
-
-						this.exit();
-
-					} else {
-
-						this.response.write(`<br> ${index}/${this.settings.likes}: Go to the next post`);
-
-						this.processPost(index);
-
-					}
+					callback();
 
 				});
 
@@ -187,7 +265,7 @@ class Bot{
 
 		this.browser.quit();
 
-		this.response.write('<br> *** All done. Exit ***');
+		this.response.write('<br> *** All done. Exit *** <br>');
 
 		this.response.end();
 
